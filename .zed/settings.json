@@ -1,0 +1,20 @@
+{
+    // Syntax highlighting and language detection
+    "file_types": {
+        "env": [".env*", ".vars", ".secrets"], // https://github.com/zarifpour/zed-env
+        "Git Ignore": [".*ignore"], // https://github.com/d1y/git_firefly
+        "JSON": [".prettierrc"],
+        "JSONC": [
+            "**/tsconfig/*.json",
+            "host.json",
+            "local.settings.json",
+            "turbo.json"
+        ],
+        "LOG": ["**/logs/**", "*.log", "*.log.*"] // https://github.com/zed-extensions/log
+    },
+    "languages": {
+        "Markdown": {
+            "soft_wrap": "editor_width"
+        }
+    }
+}

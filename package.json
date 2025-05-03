@@ -1,20 +1,41 @@
 {
-  "name": "template-turbo-azure",
-  "private": true,
-  "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
-  },
-  "devDependencies": {
-    "prettier": "^3.5.3",
-    "turbo": "^2.5.2",
-    "typescript": "5.8.2"
-  },
-  "packageManager": "pnpm@9.0.0",
-  "engines": {
-    "node": ">=18"
-  }
+    "name": "template-turbo-azure",
+    "version": "0.0.0",
+    "description": "Turborepo and pnpm workspaces template with OpenTofu IaC for Azure deployment",
+    "bugs": "https://github.com/hurdlehare/template-turbo-azure/issues",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/hurdlehare/template-turbo-azure.git"
+    },
+    "author": {
+        "name": "Tyler Albee",
+        "email": "tyleralbee25@gmail.com"
+    },
+    "type": "module",
+    "scripts": {
+        "build": "turbo run build",
+        "clean": "turbo run clean clean:root",
+        "clean:node_modules": "rm -rf node_modules **/node_modules && pnpm store prune",
+        "dev": "turbo run dev",
+        "format": "prettier --log-level warn --write \"**/*.{js,jsx,cjs,mjs,ts,tsx,cts,mts,md,mdx,yaml,yml,json,jsonc}\"",
+        "lint": "turbo run lint",
+        "test": "turbo run test",
+        "toc": "turbo run toc toc:root toc:infra",
+        "toc:infra": "markdown-toc -i infra/README.md --bullets \"-\" --indent \"    \" && prettier --write infra/README.md",
+        "toc:root": "markdown-toc -i README.md --bullets \"-\" --indent \"    \" && prettier --write README.md",
+        "typecheck": "turbo run typecheck"
+    },
+    "devDependencies": {
+        "@ianvs/prettier-plugin-sort-imports": "^4.4.1",
+        "knip": "^5.52.0",
+        "markdown-toc": "^1.2.0",
+        "prettier": "^3.5.3",
+        "prettier-plugin-jsdoc": "^1.3.2",
+        "prettier-plugin-packagejson": "^2.5.10",
+        "turbo": "2.5.2"
+    },
+    "packageManager": "pnpm@10.10.0",
+    "engines": {
+        "node": ">=22"
+    }
 }

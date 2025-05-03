@@ -1,21 +1,36 @@
 {
-  "$schema": "https://turborepo.com/schema.json",
-  "ui": "tui",
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
-    },
-    "lint": {
-      "dependsOn": ["^lint"]
-    },
-    "check-types": {
-      "dependsOn": ["^check-types"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
+    "$schema": "https://turborepo.com/schema.json",
+    "ui": "tui",
+    "tasks": {
+        "build": {
+            "dependsOn": ["^build"],
+            "inputs": ["$TURBO_DEFAULT$", ".env*"],
+            "outputs": [".next/**", "!.next/cache/**"]
+        },
+        "toc": {
+            "inputs": ["README.md", "**/README.md"],
+            "outputs": ["README.md", "**/README.md"],
+            "outputLogs": "errors-only"
+        },
+        "//#toc:root": {
+            "inputs": ["README.md"],
+            "outputs": ["README.md"],
+            "outputLogs": "errors-only"
+        },
+        "//#toc:infra": {
+            "inputs": ["infra/README.md"],
+            "outputs": ["infra/README.md"],
+            "outputLogs": "errors-only"
+        },
+        "lint": {
+            "dependsOn": ["^lint"]
+        },
+        "check-types": {
+            "dependsOn": ["^check-types"]
+        },
+        "dev": {
+            "cache": false,
+            "persistent": true
+        }
     }
-  }
 }
