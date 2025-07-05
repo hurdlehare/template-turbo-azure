@@ -1,0 +1,5 @@
+application        = "example"
+environment        = "Development"
+environment_short  = "dev"
+location           = "West US 2"
+location_short     = "wus2"
