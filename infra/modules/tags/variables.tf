@@ -71,7 +71,6 @@ variable "github_owner" {
 variable "github_repository" {
   description = "Github repository name"
   type        = string
-  sensitive   = true
 
   # validation {
   #   condition     = can(regex("^[A-Za-z0-9._-]{1,100}$", var.github_repository))
