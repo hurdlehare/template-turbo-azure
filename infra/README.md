@@ -1,11 +1,6 @@
 # Infrastructure as Code (IaC) for Azure
 
-This directory contains OpenTofu (Terraform) configurations for infrastructure on Azure. If you're new to OpenTofu/Terraform and want to get started creating infrastructure, please check out [Getting Started](https://learn.hashicorp.com/terraform#getting_started).
-
-> [!TIP]
-> OpenTofu is a fork of Terraform that we use to manage our infrastructure. There may be small differences
-> between Terraform and OpenTofu, but the OpenTofu project is open source and doesn't carry the risk of being
-> closed or commercialized. See OpenTofu's [manifesto](https://opentofu.org/manifesto/) for more info.
+This directory contains [OpenTofu](https://opentofu.org/manifesto/) (Terraform) configurations for infrastructure on Azure. If you're new to OpenTofu/Terraform and want to get started, check out [Terraform's Getting Started](https://learn.hashicorp.com/terraform#getting_started).
 
 ## Table of Contents
 
@@ -17,17 +12,10 @@ This directory contains OpenTofu (Terraform) configurations for infrastructure o
     - [Configuration](#configuration)
     - [Planning](#planning)
     - [Applying](#applying)
-- [Background](#background)
 - [Conventions](#conventions)
     - [Naming](#naming)
     - [AVM](#avm)
-- [Deployment](#deployment)
     - [Style](#style)
-        - [Arguments](#arguments)
-            - [Incorrect](#incorrect)
-            - [Correct](#correct)
-        - [Ordering](#ordering)
-        - [Separation](#separation)
 
 <!-- tocstop -->
 
@@ -48,8 +36,7 @@ When running `tofu`:
 1. Set up environment variables in `.env`.
 2. Run `source .env` to load the environment variables.
 
-> [!TIP]
-> See [`.env.example`](./environments/prod/.env.example) for environment variable names and example values.
+> [!TIP] Use a tool like [direnv](https://direnv.net/) to dynamically set environment variables based on the current directory.
 
 ### Configuration
 
@@ -67,180 +54,282 @@ When running `tofu`:
 2. Confirm the changes by typing `yes` when prompted.
 3. Repeat `tofu plan` and `tofu apply` as needed until the desired state is reached.
 
-## Background
-
-The `infra` directory wouldn't work out of the box in a fresh Azure subscription; it relies on the following to be in place already:
-
-1. `00-backend.tf`:
-
-- A **random 3-character string** unique to the OpenTofu state container: `"random_string"`
-- A **resource group** for the resources required to host our own OpenTofu state container: `"rg-tfstate-${var.environment}-${random_string.resource_id_tfstate.result}"`
-- A **storage account** for the OpenTofu state container: `"sttfstate${random_string.resource_id_tfstate.result}"`
-- One or more **firewall rules** containing the IP addresses of any machines that will be running OpenTofu
-- The **storage container** within the storage account we created above: `"stg-tfstate-${var.environment}-${random_string.resource_id_tfstate.result}"`
-
-2. `00-provider.tf`:
-
-- The **Azure Resource Manager (ARM) provider** with the correct version: `azurerm`
-- The **backend block commented out**:
-
-```tf
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "x.x.x"
-    }
-  }
-  # backend "azurerm" {
-  #   resource_group_name  = "rg-tfstate-prod-XXX"
-  #   storage_account_name = "sttfstateXXX"
-  #   container_name       = "stg-tfstate-prod-XXX"
-  #   key                  = "terraform.tfstate"
-  # }
-}
-provider "azurerm" {
-  features {}
-}
-```
-
-> [!NOTE]
-> This is commented out for the initial setup of the OpenTofu state container, but later, we'll uncomment
-> it and replace the `XXX` with the `${random_string.resource_id_tfstate.result}`:
-
-3. `00-variables.tf`:
-
-- The `"environment"` variable (`TF_VAR_environment`)
-- The `"azure_region"` variable (`TF_VAR_azure_region`)
-
-4. `00-constants.tf` (optional, but recommended):
-
-- Shared `tags`, which are key-value pairs that can be applied to resources for organization.
-- The `groups`, which are logical groupings of resources that are deployed together.
-- Our `slots`, which define the slots we'll use for Azure App Services.
-
-5. `00-prefixes.tf` (optional, but recommended):
-
-- The `prefix` variable, which is a prefix used for naming resources according to Azure best practices
-- Each resource has a different prefix.
-
-6. An `.env` file in the root of the `infra/environments/prod` directory (see [`.env.example`](./environments/prod/.env.example) for an example):
-
-- It should follow the format of the `.env.example` file, but with the correct values for your environment.
-- Contains any variables defined in `00-variables.tf` (e.g. `"environment"` is set with `TF_VAR_environment`).
-- Always `source .env` before running `tofu` commands.
-
-You can then follow the [Usage](#usage) instructions to deploy the Terraform state container, at which point you should replace the `XXX` in the `backend` block with the `${random_string.resource_id_tfstate.result}`.
-
 ## Conventions
 
 ### Naming
 
-Our resources should have [Cloud Adoption Framework (CAF) compliant](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming) names. See [Define your naming convention](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming#example-names-compute-and-web) for more info.
+Resources should have [Cloud Adoption Framework (CAF) compliant](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming) names. See [Define your naming convention](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming#example-names-compute-and-web) for more info.
 
-> `${resourceAbbreviation}-${applicationName}-${environmentAbbreviation}-${uniqueIdentifier}`
+> `${prefix}-${application}-${environment_short}-${location_short}-${unique}`
 
-| Variable                  | Description                                | Example                  | Min Length | Max Length             |
-| ------------------------- | ------------------------------------------ | ------------------------ | ---------- | ---------------------- |
-| `resourceAbbreviation`    | Shorthand for the resource                 | `rg` (Resource Group)    | `2`        | `9`                    |
-| `applicationName`         | Logical grouping a resource belongs to     | `search` (Search Engine) | `3`        | `resourceNameMax - 17` |
-| `environmentAbbreviation` | `prod`, `stage`, `dev`, `qa`, `test`       | `prod` (Production)      | `2`        | `5`                    |
-| `uniqueIdentifier`        | Random string of 3 alphanumeric characters | `1a9` (Random)           | `3`        | `3`                    |
+| Variable           | Description                            | Example               | Min Length | Max Length             |
+| ------------------ | -------------------------------------- | --------------------- | ---------- | ---------------------- |
+| `prefix`           | Shorthand for the resource             | `rg` (Resource Group) | `2`        | `9`                    |
+| `application`      | Logical grouping a resource belongs to | `jobs`                | `3`        | `resourceNameMax - 24` |
+| `environment_short` | `prod`, `stage`, `dev`, `qa`, `test`   | `dev` (Development)   | `2`        | `5`                    |
+| `location_short`    | `wus2`, `eus2`, etc.                   | `wus2` (West US 2)    | `3`        | `5`                    |
+| `unique`           | Random string alphanumeric characters  | `jgtqs` (Random)      | `5`        | `5`                    |
 
-**Example**: `rg-search-prod-1a9`
+**Example**: `rg-jobs-dev-wus2-jgtqs`
 
 See: https://registry.terraform.io/modules/Azure/naming/azurerm/latest#advanced-usage
 
+> > [!TIP]- Use the [Azure Resource Abbreviations](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations) to create a prefix for your resources.
+> 
+> The following are the prefixes I use in my own projects:
+> 
+> ```hcl
+> locals {
+>   # Azure Resource Abbreviations
+>   # https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations  prefixes = {
+>   prefixes = {
+>     # AI & Machine Learning
+>     aISearch                      = "srch",
+>     azureAIservices               = "ais",
+>     azureAIFoundryhub             = "hub",
+>     azureAIFoundryproject         = "proj",
+>     azureAIVideoIndexer           = "avi",
+>     azureMachineLearningworkspace = "mlw",
+>     azureOpenAIService            = "oai",
+>     botservice                    = "bot",
+>     computervision                = "cv",
+>     contentmoderator              = "cm",
+>     contentsafety                 = "cs",
+>     customvisionPrediction        = "cstv",
+>     customvisionTraining          = "cstvt",
+>     documentintelligence          = "di",
+>     faceAPI                       = "face",
+>     healthInsights                = "hi",
+>     immersivereader               = "ir",
+>     languageservice               = "lang",
+>     speechservice                 = "spch",
+>     translator                    = "trsl",
+> 
+>     # Analytics and IoT
+>     azureAnalysisServicesserver           = "as",
+>     azureDatabricksworkspace              = "dbw",
+>     azureDataExplorercluster              = "dec",
+>     azureDataExplorerclusterdatabase      = "dedb",
+>     azureDataFactory                      = "adf",
+>     azureDigitalTwininstance              = "dt",
+>     azureStreamAnalytics                  = "asa",
+>     azureSynapseAnalyticsprivatelinkhub   = "synplh",
+>     azureSynapseAnalyticsSQLDedicatedPool = "syndp",
+>     azureSynapseAnalyticsSparkPool        = "synsp",
+>     azureSynapseAnalyticsworkspaces       = "synw",
+>     dataLakeStoreaccount                  = "dls",
+>     dataLakeAnalyticsaccount              = "dla",
+>     eventHubsnamespace                    = "evhns",
+>     eventhub                              = "evh",
+>     eventGriddomain                       = "evgd",
+>     eventGridsubscriptions                = "evgs",
+>     eventGridtopic                        = "evgt",
+>     eventGridsystemtopic                  = "egst",
+>     hDInsight-Hadoopcluster               = "hadoop",
+>     hDInsight-HBasecluster                = "hbase",
+>     hDInsight-Kafkacluster                = "kafka",
+>     hDInsight-Sparkcluster                = "spark",
+>     hDInsight-Stormcluster                = "storm",
+>     hDInsight-MLServicescluster           = "mls",
+>     ioThub                                = "iot",
+>     provisioningservices                  = "provs",
+>     provisioningservicescertificate       = "pcert",
+>     powerBIEmbedded                       = "pbi",
+>     timeSeriesInsightsenvironment         = "tsi",
+> 
+>     # Compute and web
+>     appServiceenvironment                  = "ase",
+>     appServiceplan                         = "asp",
+>     azureLoadTestinginstance               = "lt",
+>     availabilityset                        = "avail",
+>     azureArcenabledserver                  = "arcs",
+>     azureArcenabledKubernetescluster       = "arck",
+>     azureArcprivatelinkscope               = "pls",
+>     azureArcgateway                        = "arcgw",
+>     batchaccounts                          = "ba",
+>     cloudservice                           = "cld",
+>     communicationServices                  = "acs",
+>     diskencryptionset                      = "des",
+>     functionapp                            = "func",
+>     gallery                                = "gal",
+>     hostingenvironment                     = "host",
+>     imagetemplate                          = "it",
+>     manageddiskOS                          = "osdisk",
+>     manageddiskData                        = "disk",
+>     notificationHubs                       = "ntf",
+>     notificationHubsnamespace              = "ntfns",
+>     proximityplacementgroup                = "ppg",
+>     restorepointcollection                 = "rpc",
+>     snapshot                               = "snap",
+>     staticwebapp                           = "stapp",
+>     virtualmachine                         = "vm",
+>     virtualmachinescaleset                 = "vmss",
+>     virtualmachinemaintenanceconfiguration = "mc",
+>     vMstorageaccount                       = "stvm",
+>     webapp                                 = "app",
+> 
+>     # Containers
+>     aKScluster                  = "aks",
+>     aKSsystemnodepool           = "npsystem",
+>     aKSusernodepool             = "np",
+>     containerapps               = "ca",
+>     containerappsenvironment    = "cae",
+>     containerregistry           = "cr",
+>     containerinstance           = "ci",
+>     serviceFabriccluster        = "sf",
+>     serviceFabricmanagedcluster = "sfmc",
+> 
+>     # Databases
+>     azureCosmosDBdatabase                  = "cosmos",
+>     azureCosmosDBforApacheCassandraaccount = "coscas",
+>     azureCosmosDBforMongoDBaccount         = "cosmon",
+>     azureCosmosDBforNoSQLaccount           = "cosno",
+>     azureCosmosDBforTableaccount           = "costab",
+>     azureCosmosDBforApacheGremlinaccount   = "cosgrm",
+>     azureCosmosDBPostgreSQLcluster         = "cospos",
+>     azureCacheforRedisinstance             = "redis",
+>     azureSQLDatabaseserver                 = "sql",
+>     azureSQLdatabase                       = "sqldb",
+>     azureSQLElasticJobagent                = "sqlja",
+>     azureSQLElasticPool                    = "sqlep",
+>     mariaDBserver                          = "maria",
+>     mariaDBdatabase                        = "mariadb",
+>     mySQLdatabase                          = "mysql",
+>     postgreSQLdatabase                     = "psql",
+>     sQLServerStretchDatabase               = "sqlstrdb",
+>     sQLManagedInstance                     = "sqlmi",
+> 
+>     # Developer tools
+>     appConfigurationstore = "appcs",
+>     mapsaccount           = "map",
+>     signalR               = "sigr",
+>     webPubSub             = "wps",
+> 
+>     # Dev Ops
+>     azureManagedGrafana = "amg",
+> 
+>     # Integration
+>     aPImanagementserviceinstance = "apim",
+>     integrationaccount           = "ia",
+>     logicapp                     = "logic",
+>     serviceBusnamespace          = "sbns",
+>     serviceBusqueue              = "sbq",
+>     serviceBustopic              = "sbt",
+>     serviceBustopicsubscription  = "sbts",
+> 
+>     # Management and governance
+>     automationaccount                        = "aa",
+>     azurePolicydefinition                    = "<descriptive>",
+>     applicationInsights                      = "appi",
+>     azureMonitoractiongroup                  = "ag",
+>     azureMonitordatacollectionrule           = "dcr",
+>     azureMonitoralertprocessingrule          = "apr",
+>     blueprintPlannedfordeprecation           = "bp",
+>     blueprintassignmentPlannedfordeprecation = "bpa",
+>     datacollectionendpoint                   = "dce",
+>     logAnalyticsworkspace                    = "log",
+>     logAnalyticsquerypacks                   = "pack",
+>     managementgroup                          = "mg",
+>     microsoftPurviewinstance                 = "pview",
+>     resourcegroup                            = "rg",
+>     templatespecsname                        = "ts",
+> 
+>     # Migration
+>     azureMigrateproject              = "migr",
+>     databaseMigrationServiceinstance = "dms",
+>     recoveryServicesvault            = "rsv",
+> 
+>     # Networking
+>     applicationgateway                   = "agw",
+>     applicationsecuritygroupASG          = "asg",
+>     cDNprofile                           = "cdnp",
+>     cDNendpoint                          = "cdne",
+>     connections                          = "con",
+>     dNS                                  = "<DNSdomainname>",
+>     dNSforwardingruleset                 = "dnsfrs",
+>     dNSprivateresolver                   = "dnspr",
+>     dNSprivateresolverinboundendpoint    = "in",
+>     dNSprivateresolveroutboundendpoint   = "out",
+>     dNSzone                              = "<DNSdomainname>",
+>     firewall                             = "afw",
+>     firewallpolicy                       = "afwp",
+>     expressRoutecircuit                  = "erc",
+>     expressRoutedirect                   = "erd",
+>     expressRoutegateway                  = "ergw",
+>     frontDoorStandardPremiumProfile      = "afd",
+>     frontDoorStandardPremiumEndpoint     = "fde",
+>     frontDoorfirewallpolicy              = "fdfp",
+>     frontDoorClassic                     = "afd",
+>     iPgroup                              = "ipg",
+>     loadbalancerInternal                 = "lbi",
+>     loadbalancerExternal                 = "lbe",
+>     loadbalancerrule                     = "rule",
+>     localnetworkgateway                  = "lgw",
+>     nATgateway                           = "ng",
+>     networkinterfaceNIC                  = "nic",
+>     networksecuritygroupNSG              = "nsg",
+>     networksecuritygroupNSGSecurityrules = "nsgsr",
+>     networkWatcher                       = "nw",
+>     privateLink                          = "pl",
+>     privateendpoint                      = "pep",
+>     publicIPaddress                      = "pip",
+>     publicIPaddressprefix                = "ippre",
+>     routefilter                          = "rf",
+>     routeserver                          = "rtserv",
+>     routetable                           = "rt",
+>     serviceendpointpolicy                = "se",
+>     trafficManagerprofile                = "traf",
+>     userdefinedrouteUDR                  = "udr",
+>     virtualnetwork                       = "vnet",
+>     virtualnetworkgateway                = "vgw",
+>     virtualnetworkmanager                = "vnm",
+>     virtualnetworkpeering                = "peer",
+>     virtualnetworksubnet                 = "snet",
+>     virtualWAN                           = "vwan",
+>     virtualWANHub                        = "vhub",
+> 
+>     # Security
+>     azureBastion                             = "bas",
+>     keyvault                                 = "kv",
+>     keyVaultManagedHSM                       = "kvmhsm",
+>     managedidentity                          = "id",
+>     sSHkey                                   = "sshkey",
+>     vPNGateway                               = "vpng",
+>     vPNconnection                            = "vcn",
+>     vPNsite                                  = "vst",
+>     webApplicationFirewallWAFPolicy          = "waf",
+>     webApplicationFirewallWAFPolicyrulegroup = "wafrg",
+> 
+>     # Storage
+>     azureStorSimple        = "ssimp",
+>     backupVaultname        = "bvault",
+>     backupVaultpolicy      = "bkpol",
+>     fileshare              = "share",
+>     storageaccount         = "st",
+>     storageSyncServicename = "sss",
+> 
+>     # Virtual desktop infrastructure
+>     virtualdesktophostpool         = "vdpool",
+>     virtualdesktopapplicationgroup = "vdag",
+>     virtualdesktopworkspace        = "vdws",
+>     virtualdesktopscalingplan      = "vdscaling",
+> 
+>     # CUSTOM
+>     # https://github.com/Azure/terraform-azurerm-naming/blob/master/resourceDefinition.json
+>     storageContainer = "stct",
+>     storageQueue     = "stq",
+>     storageTable     = "stt"
+>   }
+> }
+> ```
+>
+
 ### AVM
 
-Where possible, we use [Azure Verified Modules for Terraform](https://azure.github.io/Azure-Verified-Modules/indexes/terraform/tf-resource-modules/#published-modules-----) for Azure-supported, ready-to-use Terraform modules. These modules are designed to be used in production and are supported by Microsoft. They are also compliant with the [Cloud Adoption Framework (CAF)](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/overview) and follow best practices for Azure resource management.
-
-## Deployment
-
-Ideally, we would use a CI/CD pipeline to deploy infrastructure changes. Our pipeline might look like this:
-
-1. `on: pull_request` - Run `tofu plan` to show the changes that will be applied.
-2. `on: push` - Run `tofu apply` to apply the changes.
-
-However, we currently run our IaC locally.
+Where possible, use [Azure Verified Modules for Terraform](https://azure.github.io/Azure-Verified-Modules/indexes/terraform/tf-resource-modules/#published-modules-----) for Azure-supported, ready-to-use Terraform modules. These modules are designed to be used in production and are supported by Microsoft. They are also compliant with the [Cloud Adoption Framework (CAF)](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/overview) and follow best practices for Azure resource management.
 
 ### Style
 
 See [Style Conventions](https://opentofu.org/docs/language/syntax/style/) in the OpenTofu documentation for idiomatic infrastructure as code.
 
-Not all style conventions are enforced by the `tofu fmt` command. Outlined below are conventions that are not enforced by `tofu fmt` but are recommended for readability and maintainability.
-
-#### Arguments
-
-> When both arguments and blocks appear together inside a block body, place all of the arguments together at the top and then place nested blocks below them. Use one blank line to separate the arguments from the blocks.
-
-##### Incorrect
-
-The `instance_type` argument should be placed above the `network_interface` block:
-
-```tf
-resource "azurerm_example" "example" {
-  example = "an example"
-  block_example {
-    # ...
-  }
-  another_example = "another example"
-}
-```
-
-##### Correct
-
-All arguments are placed before blocks.
-
-```tf
-resource "azurerm_example" "example" {
-  example = "an example"
-  another_example = "another example"
-  block_example {
-    # ...
-  }
-}
-```
-
-#### Ordering
-
-> For blocks that contain both arguments and "meta-arguments" (as defined by the OpenTofu language semantics), list meta-arguments first and separate them from other arguments with one blank line. Place meta-argument blocks last and separate them from other blocks with one blank line.
-
-```tf
-resource "azurerm_example" "example" {
-    count = 1
-
-    example = "an example"
-    another_example = "another example"
-    block_example {
-      # ...
-    }
-
-    lifecycle {
-      ignore_changes = [example]
-    }
-}
-```
-
-#### Separation
-
-> Top-level blocks should always be separated from one another by one blank line. Nested blocks should also be separated by blank lines, except when grouping together related blocks of the same type (like multiple provisioner blocks in a resource).
-
-```tf
-module "example" {
-  source    = "./example"
-}
-
-resource "azurerm_example_resource_foo" "foo" {
-  provisioner "local-exec" {
-    command = "first"
-  }
-  provisioner "local-exec" {
-    command = "second"
-  }
-}
-
-resource "azurerm_example_resource_bar" "bar" {
-    # ...
-}
-```
+Not all style conventions are enforced by the `tofu fmt` command. Consider using a linter like [tflint](https://github.com/terraform-linters/tflint) to enforce style conventions.
