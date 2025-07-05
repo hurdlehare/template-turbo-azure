@@ -60,8 +60,6 @@ variable "environment" {
 variable "github_owner" {
   description = "Github owner/organization name"
   type        = string
-  sensitive   = true
-
   # validation {
   #   condition     = can(regex("^(?!-)(?!.*--)[A-Za-z0-9-]{1,39}$", var.github_owner))
   #   error_message = "GitHub handles must be <=39 alphanumeric or non-consecutive, non-prefix hyphen characters."
