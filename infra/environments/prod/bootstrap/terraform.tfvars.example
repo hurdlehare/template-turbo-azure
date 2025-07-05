@@ -1,0 +1,13 @@
+application = "tfstate"
+environment = "Production"
+#  az ad sp list --filter "startswith(displayName, 'sp-tfstate-')" --query "[].{principal_id:id,name:appDisplayName}"
+environment_principals = {
+  dev   = "xxxxxxxx-xxxx-xxxx-xxxxxxxxxxxxxxxxx"
+  stage = "xxxxxxxx-xxxx-xxxx-xxxxxxxxxxxxxxxxx"
+  prod  = "xxxxxxxx-xxxx-xxxx-xxxxxxxxxxxxxxxxx"
+}
+environment_short  = "prod"
+environment_shorts = ["prod", "stage", "dev"]
+ip_rules           = ["127.0.0.1"]
+location           = "West US 2"
+location_short     = "wus2"
