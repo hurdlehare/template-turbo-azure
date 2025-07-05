@@ -14,8 +14,11 @@ terraform.tfvars
 coverage
 
 # Caching
+.terraform
 .turbo
 .vercel
+terraform.tfstate
+terraform.tfstate.backup
 
 # Build Output
 .next/
